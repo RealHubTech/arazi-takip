@@ -529,23 +529,30 @@ let dragId = null;
 
 function dragStart(e, id){
   dragId = id;
-  e.currentTarget.classList.add('dragging');
+  setTimeout(()=>{ const el=document.getElementById('gc'+id); if(el) el.classList.add('dragging'); }, 0);
   e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', id);
 }
-function dragEnd(e){ e.currentTarget.classList.remove('dragging'); }
+function dragEnd(e){ 
+  document.querySelectorAll('.grid-cell').forEach(el=>{ el.classList.remove('dragging'); el.classList.remove('drag-over'); });
+}
 function dragOver(e){
   e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
   e.currentTarget.classList.add('drag-over');
 }
-function dragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+function dragLeave(e){ 
+  if(!e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('drag-over'); 
+}
 
 function dragDrop(e, hedefId){
   e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if(dragId === hedefId) return;
-  // Swap positions in siraDizisi
+  e.stopPropagation();
+  document.querySelectorAll('.grid-cell').forEach(el=>el.classList.remove('drag-over','dragging'));
+  if(!dragId || dragId === hedefId) return;
   const data = load();
-  const siralı = veriSirala(data).map(p=>p.id);
+  let siralı = veriSirala(data).map(p=>p.id);
+  if(!siralı.includes(dragId)) siralı = data.map(p=>p.id);
   const fromIdx = siralı.indexOf(dragId);
   const toIdx = siralı.indexOf(hedefId);
   if(fromIdx===-1||toIdx===-1) return;
@@ -553,21 +560,25 @@ function dragDrop(e, hedefId){
   siralı.splice(toIdx,0,dragId);
   siraDizisi = siralı;
   siraSave();
+  dragId = null;
   render();
 }
 
 function dragDropEmpty(e, hedefSira){
   e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
-  if(dragId===null) return;
+  e.stopPropagation();
+  document.querySelectorAll('.grid-cell').forEach(el=>el.classList.remove('drag-over','dragging'));
+  if(!dragId) return;
   const data = load();
-  const siralı = veriSirala(data).map(p=>p.id);
+  let siralı = veriSirala(data).map(p=>p.id);
+  if(!siralı.includes(dragId)) siralı = data.map(p=>p.id);
   const fromIdx = siralı.indexOf(dragId);
   if(fromIdx===-1) return;
   siralı.splice(fromIdx,1);
   siralı.splice(hedefSira,0,dragId);
   siraDizisi = siralı;
   siraSave();
+  dragId = null;
   render();
 }
 
