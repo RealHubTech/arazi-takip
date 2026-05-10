@@ -136,6 +136,30 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .si{display:flex;align-items:center;gap:9px;padding:10px 15px;font-size:13px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Sans',sans-serif;color:var(--text)}
 .si:hover{background:var(--s2)}
 
+/* KART RENK ŞERİDİ */
+.kart-strip{height:4px;border-radius:var(--r) var(--r) 0 0;margin:-1px -1px 0;transition:background .2s}
+.strip-amber{background:linear-gradient(90deg,#f59e0b,#d97706)}
+.strip-blue{background:linear-gradient(90deg,#3b82f6,#1d4ed8)}
+.strip-purple{background:linear-gradient(90deg,#8b5cf6,#6d28d9)}
+.strip-green{background:linear-gradient(90deg,#22c55e,#15803d)}
+.strip-gray{background:linear-gradient(90deg,#9ca3af,#6b7280)}
+.strip-red{background:linear-gradient(90deg,#ef4444,#b91c1c)}
+.strip-brown{background:linear-gradient(90deg,#b45309,#92400e)}
+.strip-pink{background:linear-gradient(90deg,#ec4899,#be185d)}
+.strip-teal{background:linear-gradient(90deg,#14b8a6,#0f766e)}
+.strip-orange{background:linear-gradient(90deg,#f97316,#c2410c)}
+
+/* RENK SEÇİCİ */
+.renk-picker{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.rc{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s}
+.rc:hover{transform:scale(1.2)}
+.rc.aktif{border-color:var(--text);transform:scale(1.15)}
+
+/* ARKA PLAN */
+.canvas{background-size:cover;background-position:center;background-repeat:no-repeat}
+.bg-overlay{position:absolute;inset:0;background:rgba(240,237,232,0.65);pointer-events:none;z-index:0}
+.canvas-inner{position:relative;z-index:1}
+
 /* TOAST */
 .toast{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:#1a1714;color:#fff;padding:9px 18px;border-radius:8px;font-size:13px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 
@@ -151,13 +175,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 <div class="bar">
   <div class="logo">🏗 Arazi & Proje Takip</div>
   <div class="bar-right">
+    <button class="btn btn-sm" onclick="acAyarlar()" title="Arka Plan & Ayarlar">⚙</button>
     <button class="btn btn-sm" onclick="acEtkinlik()">+ Etkinlik</button>
     <button class="btn btn-p btn-sm" onclick="acYeni()">+ Proje</button>
   </div>
 </div>
 
 <div class="stats" id="stats"></div>
-<div class="canvas"><div class="canvas-inner" id="masa"></div></div>
+<div class="canvas"><div class="bg-overlay"></div><div class="canvas-inner" id="masa"></div></div>
 
 <div class="footer">
   <div class="powered">
@@ -225,11 +250,14 @@ function renderMasa(){
     const b=DB[p.durum]||'b-gray';
     const kom=parseFloat(p.komisyon_miktar)||0;
     const pay=parseInt(p.paydas_sayisi)||1;
+    const stripClass = p.renk_strip || durumStrip(p.durum);
     el.innerHTML=`
+      <div class="kart-strip ${stripClass}"></div>
       <div class="kart-handle" id="h${p.id}">
         <span class="kart-drag-icon">⠿</span>
-        <div style="display:flex;gap:4px">
+        <div style="display:flex;gap:4px;align-items:center">
           <span class="badge ${b}" style="font-size:9px">${p.durum||'—'}</span>
+          <span style="font-size:11px;cursor:pointer;color:var(--t3)" onclick="event.stopPropagation();renkMenu(event,${p.id})" title="Renk değiştir">🎨</span>
         </div>
       </div>
       <div class="kart-body" onclick="kartDetay(${p.id})">
@@ -250,6 +278,110 @@ function renderMasa(){
     // Attach drag
     attachDrag(el, document.getElementById('h'+p.id), p.id);
   });
+}
+
+// ── RENK ─────────────────────────────────────────────────────
+const DURUM_STRIP={
+  'Talep':'strip-amber','Görüşme':'strip-blue','Teklif Verildi':'strip-purple',
+  'Müzakere':'strip-brown','Anlaşıldı':'strip-green','Kapandı':'strip-gray'
+};
+const TUM_RENKLER=[
+  {cls:'strip-amber',label:'Sarı',bg:'#f59e0b'},
+  {cls:'strip-blue',label:'Mavi',bg:'#3b82f6'},
+  {cls:'strip-purple',label:'Mor',bg:'#8b5cf6'},
+  {cls:'strip-green',label:'Yeşil',bg:'#22c55e'},
+  {cls:'strip-red',label:'Kırmızı',bg:'#ef4444'},
+  {cls:'strip-brown',label:'Kahve',bg:'#b45309'},
+  {cls:'strip-pink',label:'Pembe',bg:'#ec4899'},
+  {cls:'strip-teal',label:'Turkuaz',bg:'#14b8a6'},
+  {cls:'strip-orange',label:'Turuncu',bg:'#f97316'},
+  {cls:'strip-gray',label:'Gri',bg:'#9ca3af'},
+];
+function durumStrip(durum){return DURUM_STRIP[durum]||'strip-gray'}
+
+let renkSM=null;
+function renkMenu(e,id){
+  if(renkSM){renkSM.remove();renkSM=null;}
+  const p=load().find(x=>x.id===id);if(!p)return;
+  const r=e.target.getBoundingClientRect();
+  const m=document.createElement('div');
+  m.className='smenu';
+  m.style.cssText=`top:${r.bottom+6+scrollY}px;left:${r.left}px;padding:10px;min-width:auto`;
+  const aktif=p.renk_strip||durumStrip(p.durum);
+  m.innerHTML=`<div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Kart Rengi</div>
+    <div class="renk-picker">${TUM_RENKLER.map(r=>`<div class="rc ${aktif===r.cls?'aktif':''}" style="background:${r.bg}" title="${r.label}" onclick="renkSec(${id},'${r.cls}')"></div>`).join('')}</div>
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+      <button class="btn btn-sm" style="width:100%;font-size:11px" onclick="renkSec(${id},'')">↺ Duruma göre sıfırla</button>
+    </div>`;
+  document.body.appendChild(m);renkSM=m;
+  e.stopPropagation();
+  setTimeout(()=>document.addEventListener('click',()=>{if(renkSM){renkSM.remove();renkSM=null;}},{once:true}),10);
+}
+function renkSec(id,cls){
+  if(renkSM){renkSM.remove();renkSM=null;}
+  const d=load(),p=d.find(x=>x.id===id);
+  if(p){p.renk_strip=cls;save(d);bgUygula();
+renderMasa();}
+}
+
+// ── ARKA PLAN ─────────────────────────────────────────────────
+function acAyarlar(){
+  const mevcutBg=localStorage.getItem('rh_bg')||'';
+  const mevcutOpacity=localStorage.getItem('rh_bg_opacity')||'65';
+  showModal(`<div class="modal">
+    <div class="mh"><span class="mt">⚙ Arka Plan Ayarları</span><button class="btn btn-icon" onclick="closeModal()">×</button></div>
+    <div class="mb">
+      <div class="sec" style="margin-top:0">Arka Plan Görseli</div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Görsel Yükle (JPG, PNG)</label>
+        <input type="file" id="bg-file" accept="image/*" onchange="bgYukle(this)" style="font-size:13px;padding:6px">
+      </div>
+      ${mevcutBg?`<div style="margin-bottom:12px">
+        <img src="${mevcutBg}" style="width:100%;max-height:160px;object-fit:cover;border-radius:var(--rs);border:1px solid var(--border)">
+      </div>`:''}
+      <div class="field" style="margin-bottom:12px">
+        <label>Şeffaflık (Overlay): <span id="opa-val">${mevcutOpacity}%</span></label>
+        <input type="range" id="opa-range" min="0" max="90" value="${mevcutOpacity}" oninput="bgOpacity(this.value)" style="width:100%;margin-top:4px">
+      </div>
+      ${mevcutBg?`<button class="btn btn-sm btn-d" onclick="bgSil()">🗑 Arka planı kaldır</button>`:''}
+    </div>
+    <div class="mf"><button class="btn" onclick="closeModal()">Kapat</button></div>
+  </div>`);
+}
+
+function bgYukle(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    localStorage.setItem('rh_bg',e.target.result);
+    bgUygula();closeModal();acAyarlar();
+  };
+  reader.readAsDataURL(file);
+}
+
+function bgOpacity(val){
+  document.getElementById('opa-val').textContent=val+'%';
+  localStorage.setItem('rh_bg_opacity',val);
+  bgUygula();
+}
+
+function bgSil(){
+  localStorage.removeItem('rh_bg');
+  bgUygula();closeModal();acAyarlar();
+}
+
+function bgUygula(){
+  const canvas=document.querySelector('.canvas');
+  const overlay=document.querySelector('.bg-overlay');
+  const bg=localStorage.getItem('rh_bg');
+  const opa=parseInt(localStorage.getItem('rh_bg_opacity')||'65');
+  if(bg){
+    canvas.style.backgroundImage=`url(${bg})`;
+    if(overlay) overlay.style.background=`rgba(240,237,232,${opa/100})`;
+  } else {
+    canvas.style.backgroundImage='';
+    if(overlay) overlay.style.background='';
+  }
 }
 
 // ── DRAG ─────────────────────────────────────────────────────
