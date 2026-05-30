@@ -169,14 +169,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .gl-right{flex:1}
 .gl-tarih{font-size:10px;color:var(--t3);font-family:'DM Mono',monospace;margin-bottom:2px}
 .gl-metin{font-size:13px;line-height:1.5;color:var(--text)}
-.gl-sil{font-size:11px;color:var(--t3);cursor:pointer;padding:2px 5px;border-radius:3px;border:none;background:none;font-family:'DM Sans',sans-serif;opacity:0;transition:opacity .15s}
-.gl-item:hover .gl-sil{opacity:1}
-.gl-sil:hover{color:var(--red);background:var(--rl)}
-.gl-ekle{display:flex;gap:8px;margin-top:10px;align-items:flex-start}
-.gl-ekle textarea{flex:1;font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--rs);background:var(--s2);color:var(--text);outline:none;resize:none;min-height:60px;transition:border-color .15s}
-.gl-ekle textarea:focus{border-color:var(--green);background:#fff}
-.gl-ekle-btn{padding:7px 12px;border-radius:var(--rs);border:1px solid var(--green);background:var(--gl);color:var(--green);cursor:pointer;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:all .15s}
-.gl-ekle-btn:hover{background:var(--green);color:#fff}
+.gl-sil{font-size:11px;color:var(--t3);cursor:pointer;padding:3px 7px;border-radius:3px;border:1px solid var(--border);background:var(--s2);font-family:'DM Sans',sans-serif;flex-shrink:0;transition:all .15s}
+.gl-sil:hover{color:var(--red);background:var(--rl);border-color:#fca5a5}
+.gl-ekle{display:flex;flex-direction:column;gap:8px;margin-top:10px;background:var(--s2);border-radius:var(--rs);padding:10px;border:1px solid var(--border)}
+.gl-ekle-row{display:flex;gap:8px;align-items:center}
+.gl-ekle-row label{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.gl-ekle-row input[type=date]{font-family:'DM Sans',sans-serif;font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;color:var(--text);outline:none;flex:1;transition:border-color .15s}
+.gl-ekle-row input[type=date]:focus{border-color:var(--green)}
+.gl-ekle textarea{font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--rs);background:#fff;color:var(--text);outline:none;resize:none;min-height:64px;width:100%;transition:border-color .15s}
+.gl-ekle textarea:focus{border-color:var(--green)}
+.gl-ekle-btn{align-self:flex-end;padding:7px 16px;border-radius:var(--rs);border:none;background:var(--green);color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;transition:background .15s}
+.gl-ekle-btn:hover{background:#1a4a2d}
 .toast{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:#1a1714;color:#fff;padding:9px 18px;border-radius:8px;font-size:13px;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 
 @media(max-width:600px){
@@ -494,6 +497,7 @@ function detayHTML(p){
 
   // DURUM GÜNLÜĞÜ
   const gunluk=(p.gunluk||[]);
+  const bugunTarih=new Date().toISOString().slice(0,10);
   h+=`<div class="sec" style="display:flex;align-items:center;justify-content:space-between">
     <span>📋 Durum Günlüğü</span>
     <span style="font-size:10px;color:var(--t3);font-weight:400;text-transform:none">${gunluk.length} kayıt</span>
@@ -507,13 +511,17 @@ function detayHTML(p){
           <div class="gl-tarih">${g.tarih}${g.saat?' · '+g.saat:''}</div>
           <div class="gl-metin">${g.metin}</div>
         </div>
-        <button class="gl-sil" onclick="gunlukSil(${p.id},${i})" title="Sil">✕</button>
+        <button class="gl-sil" onclick="gunlukSil(${p.id},${i})">Sil</button>
       </div>`;
-    }).join(''):'<div style="font-size:12px;color:var(--t3);padding:8px 0 4px 22px">Henüz kayıt yok.</div>'}
+    }).join(''):`<div style="font-size:12px;color:var(--t3);padding:8px 0 4px 22px">Henüz kayıt yok.</div>`}
   </div>
   <div class="gl-ekle">
-    <textarea id="gl-input-${p.id}" placeholder="Bugünkü durumu yaz… (örn: Müteahhitle görüşüldü, teklif bekleniyor)" rows="2"></textarea>
-    <button class="gl-ekle-btn" onclick="gunlukEkle(${p.id})">+ Ekle</button>
+    <div class="gl-ekle-row">
+      <label>Tarih</label>
+      <input type="date" id="gl-tarih-${p.id}" value="${bugunTarih}">
+    </div>
+    <textarea id="gl-input-${p.id}" placeholder="Bugünkü durumu yaz… (örn: Müteahhitle görüşüldü, teklif bekleniyor)"></textarea>
+    <button class="gl-ekle-btn" onclick="gunlukEkle(${p.id})">+ Günlüğe Ekle</button>
   </div>`;
 
   h+=`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
@@ -804,8 +812,13 @@ function showModal(h){document.getElementById('mroot').innerHTML=`<div class="ov
 function closeModal(){document.getElementById('mroot').innerHTML=''}
 
 // ── INIT ─────────────────────────────────────────────────────
-// Migrate old data
 (function(){
+  // Veri yoksa yedekten yükle
+  if(!localStorage.getItem(K)||localStorage.getItem(K)==='[]'){
+    const yedek='[{"proje_adi":"Sinpaş Göztepe Arsası","tip":"insaat_firmasi","durum":"Müzakere","muhatap_adi":"RMA","telefon":"","email":"","lokasyon":"İstanbul/Beykoz/Göztepe","imar_durumu":"Konut + Ticari","talepler":"Teknik şartname hazırlanması bekleniyor","komisyon_miktar":"70000000","komisyon_birim":"TL","paydas_sayisi":"3","parseller":[{"id":1777974109823,"ad":"Konut","ada_parsel":"2760 ADA / 23 PARSEL","imar_turu":"Konut","brut_alan":"85159.35","terk_oran":"","kaks":"","hmax":"","net_hesap":"46.837,64 m²"},{"id":1777974234996,"ad":"Ticari","ada_parsel":"2760 ADA / 23 PARSEL","imar_turu":"Ticaret","brut_alan":"8601","terk_oran":"","kaks":"","hmax":"","net_hesap":"4730"}],"ada_parsel":"2760 ADA / 23 PARSEL","parsel_alani":"85159.35","kaks":"","hmax":"","id":1777974354541,"notlar":[],"gunluk":[]},{"proje_adi":"Suadiye 2li bina","tip":"insaat_firmasi","durum":"Müzakere","muhatap_adi":"Uzunyayla Group","telefon":"","email":"","lokasyon":"İstanbul/Kadıköy/Suadiye","imar_durumu":"konut+Ticari","talepler":"","komisyon_miktar":"16000000","komisyon_birim":"TL","paydas_sayisi":"6","parseller":[{"id":1777974456092,"ad":"Konut","ada_parsel":"530 Ada / 18 parsel","imar_turu":"Konut","brut_alan":"588.24","terk_oran":"0","kaks":"2.07","hmax":"45","net_hesap":""},{"id":1777974772617,"ad":"konut","ada_parsel":"530 Ada / 4 parsel","imar_turu":"Konut","brut_alan":"301.86","terk_oran":"0","kaks":"2.07","hmax":"42","net_hesap":""}],"ada_parsel":"530 Ada / 18 parsel","parsel_alani":"588.24","kaks":"2.07","hmax":"45","id":1777974837532,"notlar":[],"gunluk":[]},{"proje_adi":"Oktay Babet-Dikilitaş","tip":"insaat_firmasi","durum":"Müzakere","muhatap_adi":"Trend Yapı Faik bey","telefon":"","email":"","lokasyon":"Beşiktaş Dikilitaş","imar_durumu":"Konut","talepler":"","komisyon_miktar":"","komisyon_birim":"TL","paydas_sayisi":"1","parseller":[{"id":1777976335885,"ad":"Konut","ada_parsel":"12 ada / 30 parsel","imar_turu":"Konut","brut_alan":"496.84","terk_oran":"0","kaks":"","hmax":"","net_hesap":""}],"ada_parsel":"12 ada / 30 parsel","parsel_alani":"496.84","kaks":"","hmax":"","id":1777976587705,"notlar":[],"gunluk":[]}]';
+    localStorage.setItem(K, yedek);
+  }
+  // Migrate old keys
   if(!localStorage.getItem(K)){
     const old=localStorage.getItem('apt_v2')||localStorage.getItem('apt_v3');
     if(old) localStorage.setItem(K,old);
